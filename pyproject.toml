@@ -1,0 +1,9 @@
+[project]
+name = "streamguard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "vision-agents[deepgram,elevenlabs,gemini,getstream,ultralytics]>=0.3.8",
+]
