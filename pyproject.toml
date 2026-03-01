@@ -1,6 +1,6 @@
 [project]
 name = "rism"
-version = "0.1.1"
+version = "0.1.2"
 description = "A zero-latency, AI-powered cloud moderation proxy for live streamers using Vision Agents (Realtime Intelligent Stream Moderator)."
 readme = "README.md"
 authors = [

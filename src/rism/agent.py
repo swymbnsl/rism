@@ -138,12 +138,11 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
         
         if console:
             console.print("\n")
-            panel_content = Text.assemble(
-                ("URL:          ", "bold cyan"), (f"{whip_info.address}\n", "white"),
-                ("Bearer Token: ", "bold cyan"), (f"{obs_token}\n\n", "white"),
-                ("Instructions: ", "bold yellow"), ("In OBS: Settings > Stream > Service: WHIP. Paste the URL and Token above. Then 'Start Streaming'.", "italic white")
-            )
-            console.print(Panel(panel_content, title="🚀 [bold magenta]RISM OBS INTEGRATION[/bold magenta]", border_style="magenta", expand=False))
+            console.rule("🚀 [bold magenta]RISM OBS INTEGRATION[/bold magenta]", style="magenta")
+            console.print(f"[bold cyan]URL:          [/bold cyan][white]{whip_info.address}[/white]")
+            console.print(f"[bold cyan]Bearer Token: [/bold cyan][white]{obs_token}[/white]\n")
+            console.print("[bold yellow]Instructions: [/bold yellow][italic white]In OBS: Settings > Stream > Service: WHIP. Paste the URL and Token above. Then 'Start Streaming'.[/italic white]")
+            console.rule(style="magenta")
             console.print("\n")
         else:
             print("\n" + "="*60, flush=True)
