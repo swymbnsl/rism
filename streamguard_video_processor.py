@@ -67,7 +67,9 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
 
     async def _on_frame_received(self, frame: av.VideoFrame):
         """Immediately process inference, then place in the delay buffer."""
-        annotated_frame = self._annotate(frame)
+        loop = asyncio.get_running_loop()
+        # Run the blocking YOLO inference in a background thread to prevent starving aiortc
+        annotated_frame = await loop.run_in_executor(None, self._annotate, frame)
         receive_time = time.time()
         
         # Append to buffer with receipt timestamp
@@ -77,6 +79,10 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
         """Continuously check the buffer and dispatch frames once they exactly hit the delay threshold."""
         while self._running:
             now = time.time()
+            
+            # Enforce strictly monotonic PTS ordering (thread pools can return slightly out of order)
+            self._frame_buffer.sort(key=lambda x: x[1].pts)
+            
             # If the oldest frame in the buffer has been held for exactly `delay_seconds` (or longer)
             while self._frame_buffer and (now - self._frame_buffer[0][0]) >= self.delay_seconds:
                 _, frame_to_publish = self._frame_buffer.pop(0)

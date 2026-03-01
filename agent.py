@@ -62,7 +62,7 @@ async def create_agent(**kwargs) -> Agent:
         conf_threshold=0.3,
         nsfw_class_ids=[], # empty = mask all detections for testing
         box_color=(0, 0, 0),
-        delay_seconds=0 # Wait exactly 2 seconds before egress
+        delay_seconds=0.0 # Wait exactly 2 seconds before egress
     )
 
     # 2. The Audio Pipeline

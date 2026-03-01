@@ -148,4 +148,5 @@ class StreamGuardAudioProcessor(AudioProcessorPublisher):
         self._running = False
         if self._buffer_task:
             self._buffer_task.cancel()
-        await self._audio_track.stop()
+        if self._audio_track:
+            self._audio_track.stop()

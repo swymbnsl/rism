@@ -5,5 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiortc>=1.14.0",
+    "av>=14.2.0",
+    "numpy>=2.2.6",
+    "opencv-python>=4.13.0.92",
+    "opencv-python-headless>=4.13.0.92",
+    "python-dotenv>=1.2.1",
     "vision-agents[deepgram,elevenlabs,gemini,getstream,ultralytics]>=0.3.8",
 ]
