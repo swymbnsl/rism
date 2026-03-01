@@ -2,7 +2,15 @@ import asyncio
 import logging
 import os
 import time
+from pathlib import Path
 from dotenv import load_dotenv
+
+# Load .env from the current working directory before importing AI plugins
+env_path = Path.cwd() / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    load_dotenv() # Fallback to default behavior
 
 from vision_agents.core import Agent, Runner, User
 from vision_agents.core.agents import AgentLauncher
@@ -12,7 +20,6 @@ from vision_agents.core.stt.events import STTTranscriptEvent, STTPartialTranscri
 from .rism_video_processor import RISMVideoProcessor
 from .rism_audio_processor import RISMAudioProcessor
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 # List of severe profanities. Real-world systems use comprehensive blocklists or fast LLMs.
@@ -178,7 +185,30 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
                     pass
             context_task.cancel()
 
+def verify_env():
+    """Check for required environment variables and exit with instructions if missing."""
+    required = {
+        "STREAM_API_KEY": "GetStream API Key (https://getstream.io/video/docs/python-vision/)",
+        "STREAM_API_SECRET": "GetStream API Secret",
+        "GOOGLE_API_KEY": "Google Gemini API Key (https://aistudio.google.com/)",
+        "DEEPGRAM_API_KEY": "Deepgram API Key (https://console.deepgram.com/)",
+        "YOUTUBE_STREAM_KEY": "YouTube Stream Key for RTMP Egress",
+    }
+    
+    missing = [f"- {var}: {desc}" for var, desc in required.items() if not os.getenv(var)]
+    
+    if missing:
+        print("\n" + "!"*60)
+        print("🛑 MISSING CONFIGURATION")
+        print("!"*60)
+        print("RISM needs the following environment variables to function:")
+        print("\n".join(missing))
+        print("\nFix: Create a '.env' file in this folder with these keys.")
+        print("="*60 + "\n")
+        os._exit(1)
+
 def main():
+    verify_env()
     Runner(AgentLauncher(create_agent=create_agent, join_call=join_call)).cli()
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 def main():
-    print("Hello from streamguard!")
+    print("Hello from rism!")
 
 
 if __name__ == "__main__":

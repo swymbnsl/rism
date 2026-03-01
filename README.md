@@ -23,14 +23,15 @@ uv tool install rism
 ```
 *(Alternatively, clone this repo and run `uv pip install -e .`)*
 
-2. Download your preferred YOLO NSFW detection model (e.g., `nsfw_yolo.pt`) or use the default `yolo11n.pt` (automatically downloads).
+2. The YOLO NSFW detection model (`erax_nsfw_yolo11n.pt`) is pre-bundled with the package, so no manual download is required.
 
-3. Create your `.env` file:
+3. Create your `.env` file in the directory where you run the command:
 ```env
 STREAM_API_KEY="..."
 STREAM_API_SECRET="..."
 GOOGLE_API_KEY="..." # For Gemini 2.5 Flash
 DEEPGRAM_API_KEY="..." # For STT Audio Moderation
+YOUTUBE_STREAM_KEY="..." # For YouTube RTMP Egress
 ```
 
 ## How to use with OBS Studio
