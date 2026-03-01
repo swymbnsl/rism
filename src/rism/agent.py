@@ -9,8 +9,8 @@ from vision_agents.core.agents import AgentLauncher
 from vision_agents.plugins import getstream, gemini, deepgram
 from vision_agents.core.stt.events import STTTranscriptEvent, STTPartialTranscriptEvent
 
-from streamguard_video_processor import StreamGuardVideoProcessor
-from streamguard_audio_processor import StreamGuardAudioProcessor
+from .rism_video_processor import RISMVideoProcessor
+from .rism_audio_processor import RISMAudioProcessor
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ BLOCKLIST = ["fuck", "shit", "bitch", "asshole", "cunt", "company"]
 # Shared delay for both audio and video — MUST be the same for A/V sync
 DELAY_SECONDS = 2.0
 
-async def check_context_for_violations(agent: Agent, video_processor: StreamGuardVideoProcessor):
+async def check_context_for_violations(agent: Agent, video_processor: RISMVideoProcessor):
     """
     Context Pipeline: Background task that runs at 1 FPS, sampling frames
     and asking Gemini if there are Terms of Service violations.
@@ -46,14 +46,17 @@ async def check_context_for_violations(agent: Agent, video_processor: StreamGuar
             await asyncio.sleep(1.0)
 
 async def create_agent(**kwargs) -> Agent:
-    """Factory to create the Cloud Proxy StreamGuard Agent."""
+    """Factory to create the Cloud Proxy RISM Agent."""
     llm = gemini.LLM("gemini-2.5-flash")
     stt = deepgram.STT(eager_turn_detection=True)
 
+    import importlib.resources
+    model_path = str(importlib.resources.files("rism").joinpath("erax_nsfw_yolo11n.pt"))
+
     # 1. The Visual Pipeline
-    video_processor = StreamGuardVideoProcessor(
+    video_processor = RISMVideoProcessor(
         fps=30.0,
-        model_path="erax_nsfw_yolo11n.pt",
+        model_path=model_path,
         conf_threshold=0.3,
         nsfw_class_ids=[],
         box_color=(0, 0, 0),
@@ -61,14 +64,14 @@ async def create_agent(**kwargs) -> Agent:
     )
 
     # 2. The Audio Pipeline
-    audio_processor = StreamGuardAudioProcessor(
+    audio_processor = RISMAudioProcessor(
         delay_seconds=DELAY_SECONDS,  # Synced with video
     )
 
     agent = Agent(
         edge=getstream.Edge(),
-        agent_user=User(name="StreamGuard Engine", id="agent"),
-        instructions="You are the internal brain of the StreamGuard cloud proxy.",
+        agent_user=User(name="RISM Engine", id="agent"),
+        instructions="You are the internal brain of the RISM cloud proxy.",
         llm=llm,
         stt=stt,
         processors=[video_processor, audio_processor],
@@ -118,7 +121,7 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
         obs_token = agent.edge.client.create_token(obs_user_id)
         
         print("\n" + "="*60, flush=True)
-        print("🚀 STREAMGUARD OBS INTEGRATION (WHIP)", flush=True)
+        print("🚀 RISM OBS INTEGRATION (WHIP)", flush=True)
         print("="*60, flush=True)
         print(f"URL:          {whip_info.address}", flush=True)
         print(f"Bearer Token: {obs_token}", flush=True)
@@ -135,7 +138,7 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
     # video track whenever it joins and call process_video() automatically.
     print("⏳ Waiting for OBS to connect via WHIP...", flush=True)
     async with agent.join(call):
-        agent.logger.info("StreamGuard Cloud Proxy is Active.")
+        agent.logger.info("RISM Cloud Proxy is Active.")
 
         # --- YouTube RTMP Egress (agent's processed output only) ---
         # Start AFTER agent.join() has connected and process_video() has been triggered.
@@ -159,7 +162,7 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
             except Exception as e:
                 logger.error(f"❌ Failed to start YouTube RTMP broadcast: {e}")
 
-        video_proc = next((p for p in agent.processors if p.name == "streamguard_video_processor"), None)
+        video_proc = next((p for p in agent.processors if p.name == "rism_video_processor"), None)
         context_task = asyncio.create_task(check_context_for_violations(agent, video_proc))
         
         try:
@@ -175,7 +178,8 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
                     pass
             context_task.cancel()
 
-if __name__ == "__main__":
+def main():
     Runner(AgentLauncher(create_agent=create_agent, join_call=join_call)).cli()
 
-
+if __name__ == "__main__":
+    main()

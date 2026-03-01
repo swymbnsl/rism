@@ -44,7 +44,7 @@ class QueuedAudioTrack(MediaStreamTrack):
                 break
 
 
-class StreamGuardAudioProcessor(AudioProcessorPublisher):
+class RISMAudioProcessor(AudioProcessorPublisher):
     """
     Audio processor that maintains a delay buffer and dynamically
     overwrites specific time spans with a 1000Hz sine wave when instructed.

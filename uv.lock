@@ -2458,6 +2458,31 @@ wheels = [
 ]
 
 [[package]]
+name = "rism"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiortc" },
+    { name = "av" },
+    { name = "numpy" },
+    { name = "opencv-python" },
+    { name = "opencv-python-headless" },
+    { name = "python-dotenv" },
+    { name = "vision-agents", extra = ["deepgram", "elevenlabs", "gemini", "getstream", "ultralytics"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiortc", specifier = ">=1.14.0" },
+    { name = "av", specifier = ">=14.2.0" },
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "opencv-python", specifier = ">=4.13.0.92" },
+    { name = "opencv-python-headless", specifier = ">=4.13.0.92" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "vision-agents", extras = ["deepgram", "elevenlabs", "gemini", "getstream", "ultralytics"], specifier = ">=0.3.8" },
+]
+
+[[package]]
 name = "rpds-py"
 version = "0.30.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2671,31 +2696,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
-]
-
-[[package]]
-name = "streamguard"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "aiortc" },
-    { name = "av" },
-    { name = "numpy" },
-    { name = "opencv-python" },
-    { name = "opencv-python-headless" },
-    { name = "python-dotenv" },
-    { name = "vision-agents", extra = ["deepgram", "elevenlabs", "gemini", "getstream", "ultralytics"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiortc", specifier = ">=1.14.0" },
-    { name = "av", specifier = ">=14.2.0" },
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "opencv-python", specifier = ">=4.13.0.92" },
-    { name = "opencv-python-headless", specifier = ">=4.13.0.92" },
-    { name = "python-dotenv", specifier = ">=1.2.1" },
-    { name = "vision-agents", extras = ["deepgram", "elevenlabs", "gemini", "getstream", "ultralytics"], specifier = ">=0.3.8" },
 ]
 
 [[package]]

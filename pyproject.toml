@@ -1,8 +1,12 @@
 [project]
-name = "streamguard"
+name = "rism"
 version = "0.1.0"
-description = "Add your description here"
+description = "A zero-latency, AI-powered cloud moderation proxy for live streamers using Vision Agents (Realtime Intelligent Stream Moderator)."
 readme = "README.md"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+license = { text = "MIT" }
 requires-python = ">=3.12"
 dependencies = [
     "aiortc>=1.14.0",
@@ -13,3 +17,16 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "vision-agents[deepgram,elevenlabs,gemini,getstream,ultralytics]>=0.3.8",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+rism = "rism.agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rism"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/rism/erax_nsfw_yolo11n.pt" = "rism/erax_nsfw_yolo11n.pt"

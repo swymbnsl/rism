@@ -13,7 +13,7 @@ from vision_agents.core.utils.video_track import QueuedVideoTrack
 
 logger = logging.getLogger(__name__)
 
-class StreamGuardVideoProcessor(VideoProcessorPublisher):
+class RISMVideoProcessor(VideoProcessorPublisher):
     """
     Video processor using YOLO to detect NSFW content and mask it with solid boxes.
     
@@ -66,7 +66,7 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
             self._forwarder.add_frame_handler(
                 self._on_frame_received, fps=self.fps, name="nsfw_blur_annotator"
             )
-            logger.info("StreamGuardVideoProcessor attached to video forwarder.")
+            logger.info("RISMVideoProcessor attached to video forwarder.")
 
     async def _on_frame_received(self, frame: av.VideoFrame):
         """Timestamp on arrival, then run YOLO in a thread pool and place in delay buffer."""
