@@ -1,59 +1,107 @@
-# RISM (Realtime Intelligent Stream Moderator)
+# RISM: Realtime Intelligent Stream Moderator
 
-RISM is a zero-latency, AI-powered cloud moderation proxy designed for live streamers. It intercepts the stream before it reaches the public, utilizing the Vision Agents framework to process audio and video in real-time. It bleeps profanity, blurs NSFW content, and intelligently monitors context, outputting a clean, brand-safe feed to platforms like Twitch or YouTube.
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![Vision Agents](https://img.shields.io/badge/Powered%20By-Vision%20Agents-purple.svg)](https://github.com/landing-ai/vision-agents)
+[![CLI](https://img.shields.io/badge/CLI-uv%20tool-green.svg)](https://docs.astral.sh/uv/)
 
-## Architecture: Cloud Proxy
+## 📋 Table of Contents
+1. [Overview](#-overview)
+2. [How It Works](#-how-it-works)
+3. [Features](#-features)
+4. [Prerequisites](#-prerequisites)
+5. [Installation](#-installation)
+6. [Configuration](#-configuration)
+7. [Getting Started (OBS Guide)](#-getting-started-obs-guide)
+8. [Uninstalling](#-uninstalling)
 
-RISM uses a 3-Stage "Cloud Proxy" architecture that introduces a strict and unnoticeable 2-second processing buffer:
+## 🚀 Overview
+RISM (Realtime Intelligent Stream Moderator) is a zero-latency, AI-powered "Cloud Proxy" built for live streamers. It intercepts your raw video stream before it reaches the public, utilizing the Vision Agents framework to process audio and video in real-time. 
 
-1. **Ingestion (The Origin)**: Stream directly to RISM via the WebRTC HTTP Ingestion Protocol (WHIP).
-2. **The Moderation Engine (The Proxy)**: The stream is forked into parallel Video (YOLO11), Audio (STT & 1000Hz Bleep), and Context (Gemini 2.5 Flash) pipelines. The 2-second buffer ensures processing completes and the stream stays perfectly synchronized. 
-3. **Egress (The Destination)**: The cleaned tracks are automatically muxed into a standard RTMP feed and pushed to your actual Twitch/YouTube stream key.
+RISM acts as an automated digital bodyguard: it bleeps profanity, blurs NSFW content, and intelligently monitors context to protect your channel from ToS violations, outputting a clean, brand-safe feed to platforms like YouTube or Twitch.
 
-## Prerequisites
-1. Python 3.10+
-2. **OBS Studio** (v30+ supporting native WHIP output)
-3. Free [GetStream](https://getstream.io/) account to host the Vision Agents session
+## 🔄 How It Works
+RISM uses a clever **3-Stage "Cloud Proxy" architecture**. The secret to its seamless performance is a strict **2-second processing buffer**. This invisible delay ensures the AI has time to analyze the content and maintain perfect audio/video synchronization.
 
-## Installation
+1. **Ingestion (The Origin)**: Stream directly from your OBS to RISM via the WebRTC HTTP Ingestion Protocol (WHIP).
+2. **The Moderation Engine (The Proxy)**: The stream is forked into three parallel AI pipelines:
+    - **Video**: YOLO11 continuously scans for and blacks out NSFW visual content.
+    - **Audio**: Deepgram STT listens for blocklisted profanities and injects a 1000Hz bleep mask dynamically.
+    - **Context**: Gemini 2.5 Flash monitors the overall situation for complex Terms of Service violations.
+3. **Egress (The Destination)**: The cleaned, fully moderated tracks are automatically muxed back into a standard RTMP feed and pushed to your actual YouTube/Twitch stream key.
 
-1. Install via `uv tool` or `pip`:
+## ✨ Features
+- **Pure CLI Experience:** Installs globally as an executable tool. No heavy GUIs required.
+- **Near-Zero Latency:** Built on ultra-fast WebRTC edge networks.
+- **Perfect A/V Sync:** The custom jitter buffer guarantees your bleeps and blurs happen at the exact right millisecond.
+- **Bring-Your-Own "Brain":** Powered by standard API keys from GetStream, Gemini, and Deepgram.
+- **Pre-bundled Models:** Comes with an edge-optimized YOLO NSFW detection model ready out of the box.
+
+## 📋 Prerequisites
+### Infrastructure Requirements
+- **Python 3.12+**
+- **uv** (The fast Python package installer and resolver)
+- Free accounts for **GetStream**, **Google AI Studio** (Gemini), and **Deepgram**.
+
+### Application Requirements
+- **OBS Studio** (v30+ supporting native WHIP output)
+- Your **YouTube** (or Twitch) Stream Key
+
+## 📥 Installation
+
+Because RISM is packaged as a standard CLI tool, installation is a single command. Use `uv` to install it globally without messing with your local Python environments:
+
 ```bash
 uv tool install rism
 ```
-*(Alternatively, clone this repo and run `uv pip install -e .`)*
 
-2. The YOLO NSFW detection model (`erax_nsfw_yolo11n.pt`) is pre-bundled with the package, so no manual download is required.
+*(Alternatively, if you are developing, clone this repo and run `uv pip install -e .`)*
 
-3. Create your `.env` file in the directory where you run the command:
+## ⚙️ Configuration
+
+RISM needs your API keys to power its 3-stage brain. Navigate to the folder where you want to run your stream from, and create a `.env` file with the following keys:
+
 ```env
+# GetStream API Key (https://getstream.io/video/docs/python-vision/)
 STREAM_API_KEY="..."
 STREAM_API_SECRET="..."
-GOOGLE_API_KEY="..." # For Gemini 2.5 Flash
-DEEPGRAM_API_KEY="..." # For STT Audio Moderation
-YOUTUBE_STREAM_KEY="..." # For YouTube RTMP Egress
+
+# Google Gemini API Key (https://aistudio.google.com/)
+GOOGLE_API_KEY="..."
+
+# Deepgram API Key (https://console.deepgram.com/)
+DEEPGRAM_API_KEY="..."
+
+# Your YouTube Stream Key for RTMP Egress
+YOUTUBE_STREAM_KEY="..."
 ```
 
-## How to use with OBS Studio
+*Note: RISM has a built-in safety check. If you forget a key, it will instantly tell you which one is missing and safely exit.*
 
-### Part 1: Starting the Proxy Services
+## 🎬 Getting Started (OBS Guide)
 
-Start the main moderation engine:
+Using RISM is incredibly simple. It takes less than 30 seconds to start your proxy stream.
+
+### 1. Start the Moderation Engine
+Open your terminal in the directory containing your `.env` file and type:
 ```bash
 rism run --no-demo
 ```
-The agent establishes the GetStream Edge connection and waits for the broadcast. It initializes the Video and Audio processors, holding the 2-second synchronicity buffers.
 
-### Part 2: OBS Ingestion (WHIP)
+RISM will warm up its AI models, connect to the edge network, and present you with a beautiful CLI box containing your **WHIP URL** and a **Bearer Token**.
 
-Configure OBS to stream to RISM instead of your end destination.
-1. In OBS Studio, go to **Settings > Stream**.
-2. Service: **WHIP**
-3. Server: `<Your GetStream WHIP Endpoint URL for the active Call>`
-4. Click **Start Streaming**. OBS will ingest directly into the Vision Agent cloud network with near zero latency.
+### 2. Connect OBS
+1. Open OBS Studio.
+2. Go to **Settings > Stream**.
+3. Change Service to **WHIP**.
+4. Paste the **URL** and **Bearer Token** exactly as outputted by RISM.
+5. Click **Start Streaming**.
 
-### Part 3: RTMP Egress (Broadcasting the Safe Stream)
+### 3. You are Live!
+As soon as OBS connects, RISM will lock onto your signal, ingest your frames, run the moderation pipelines, and instantly route the safe stream out to the `YOUTUBE_STREAM_KEY` you provided.
 
-The agent automatically handles RTMP egress if you have configured the `YOUTUBE_STREAM_KEY` in your `.env` file. The output layout is strictly set to single-participant to show only the agent's safe, processed feed.
+## 🗑️ Uninstalling
 
-**You are now done!** RISM intercepts your raw OBS feed over WHIP, runs the 3 AI pipelines asynchronously over the 2-second jitter buffer, and ships the safe, moderated feed sequentially to Twitch/YouTube!
+Decided to turn off your digital bodyguard? Cleanly remove the tool and its entire isolated environment with one command:
+```bash
+uv tool uninstall rism
+```

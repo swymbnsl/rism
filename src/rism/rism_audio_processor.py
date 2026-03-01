@@ -102,12 +102,8 @@ class RISMAudioProcessor(AudioProcessorPublisher):
             'channels': ch,
         })
 
-        if self._frames_received % 500 == 1:
-            logger.info(
-                "🔊 Audio buffer: received=%d, published=%d, bleeps=%d, buffered=%d, intervals=%d",
-                self._frames_received, self._frames_published, self._bleeps_applied,
-                len(self._audio_buffer), len(self._bleep_intervals),
-            )
+        # Periodic health log removed for cleaner CLI experience
+        pass
 
     def add_bleep_interval(self, start_time: float, end_time: float):
         """Instruct the processor to overwrite this time window with a 1000Hz sine wave."""

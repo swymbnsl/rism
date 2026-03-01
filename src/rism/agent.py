@@ -20,6 +20,15 @@ from vision_agents.core.stt.events import STTTranscriptEvent, STTPartialTranscri
 from .rism_video_processor import RISMVideoProcessor
 from .rism_audio_processor import RISMAudioProcessor
 
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.columns import Columns
+    from rich.text import Text
+    console = Console()
+except ImportError:
+    console = None
+
 logger = logging.getLogger(__name__)
 
 # List of severe profanities. Real-world systems use comprehensive blocklists or fast LLMs.
@@ -34,7 +43,7 @@ async def check_context_for_violations(agent: Agent, video_processor: RISMVideoP
     Context Pipeline: Background task that runs at 1 FPS, sampling frames
     and asking Gemini if there are Terms of Service violations.
     """
-    logger.info("Context Pipeline initialized. Monitoring video stream at 1 FPS.")
+    # logger.info("Context Pipeline initialized. Monitoring video stream at 1 FPS.")
     
     while True:
         try:
@@ -127,25 +136,45 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
         await agent.edge.client.create_user(name="OBS Streamer", id=obs_user_id)
         obs_token = agent.edge.client.create_token(obs_user_id)
         
-        print("\n" + "="*60, flush=True)
-        print("🚀 RISM OBS INTEGRATION (WHIP)", flush=True)
-        print("="*60, flush=True)
-        print(f"URL:          {whip_info.address}", flush=True)
-        print(f"Bearer Token: {obs_token}", flush=True)
-        print("-" * 60, flush=True)
-        print("In OBS: Settings > Stream > Service: WHIP", flush=True)
-        print("Paste the URL and Bearer Token above. Then 'Start Streaming'.", flush=True)
-        print("="*60 + "\n", flush=True)
+        if console:
+            console.print("\n")
+            panel_content = Text.assemble(
+                ("URL:          ", "bold cyan"), (f"{whip_info.address}\n", "white"),
+                ("Bearer Token: ", "bold cyan"), (f"{obs_token}\n\n", "white"),
+                ("Instructions: ", "bold yellow"), ("In OBS: Settings > Stream > Service: WHIP. Paste the URL and Token above. Then 'Start Streaming'.", "italic white")
+            )
+            console.print(Panel(panel_content, title="🚀 [bold magenta]RISM OBS INTEGRATION[/bold magenta]", border_style="magenta", expand=False))
+            console.print("\n")
+        else:
+            print("\n" + "="*60, flush=True)
+            print("🚀 RISM OBS INTEGRATION (WHIP)", flush=True)
+            print("="*60, flush=True)
+            print(f"URL:          {whip_info.address}", flush=True)
+            print(f"Bearer Token: {obs_token}", flush=True)
+            print("-" * 60, flush=True)
+            print("In OBS: Settings > Stream > Service: WHIP", flush=True)
+            print("Paste the URL and Bearer Token above. Then 'Start Streaming'.", flush=True)
+            print("="*60 + "\n", flush=True)
     except Exception as e:
-        print(f"❌ Failed to fetch OBS WHIP credentials: {e}", flush=True)
+        if console:
+            console.print(f"[bold red]❌ Failed to fetch OBS WHIP credentials:[/bold red] {e}")
+        else:
+            print(f"❌ Failed to fetch OBS WHIP credentials: {e}", flush=True)
 
     youtube_key = os.getenv("YOUTUBE_STREAM_KEY")
 
     # OBS connects via WHIP asynchronously. The SDK will detect OBS's
     # video track whenever it joins and call process_video() automatically.
-    print("⏳ Waiting for OBS to connect via WHIP...", flush=True)
+    if console:
+        console.print("[bold yellow]⏳ Waiting for OBS to connect via WHIP...[/bold yellow]")
+    else:
+        print("⏳ Waiting for OBS to connect via WHIP...", flush=True)
+    
     async with agent.join(call):
-        agent.logger.info("RISM Cloud Proxy is Active.")
+        if console:
+            console.print("[bold green]✅ RISM Cloud Proxy is Active. Moderating stream...[/bold green]")
+        else:
+            agent.logger.info("RISM Cloud Proxy is Active.")
 
         # --- YouTube RTMP Egress (agent's processed output only) ---
         # Start AFTER agent.join() has connected and process_video() has been triggered.
@@ -198,13 +227,21 @@ def verify_env():
     missing = [f"- {var}: {desc}" for var, desc in required.items() if not os.getenv(var)]
     
     if missing:
-        print("\n" + "!"*60)
-        print("🛑 MISSING CONFIGURATION")
-        print("!"*60)
-        print("RISM needs the following environment variables to function:")
-        print("\n".join(missing))
-        print("\nFix: Create a '.env' file in this folder with these keys.")
-        print("="*60 + "\n")
+        if console:
+            error_text = Text.assemble(
+                ("RISM needs the following environment variables to function:\n\n", "white"),
+                ("\n".join(missing) + "\n\n", "yellow"),
+                ("Fix: ", "bold green"), ("Create a '.env' file in this folder with these keys.", "white")
+            )
+            console.print(Panel(error_text, title="[bold red]🛑 MISSING CONFIGURATION[/bold red]", border_style="red", expand=False))
+        else:
+            print("\n" + "!"*60)
+            print("🛑 MISSING CONFIGURATION")
+            print("!"*60)
+            print("RISM needs the following environment variables to function:")
+            print("\n".join(missing))
+            print("\nFix: Create a '.env' file in this folder with these keys.")
+            print("="*60 + "\n")
         os._exit(1)
 
 def main():
