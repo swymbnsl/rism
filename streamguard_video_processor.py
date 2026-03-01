@@ -15,8 +15,11 @@ logger = logging.getLogger(__name__)
 
 class StreamGuardVideoProcessor(VideoProcessorPublisher):
     """
-    Video processor using YOLO to detect NSFW content, mask it with solid boxes, 
-    and maintain a 2-second delay buffer to synchronize with audio processing.
+    Video processor using YOLO to detect NSFW content and mask it with solid boxes.
+    
+    Uses the same delay buffer approach as the audio processor to ensure
+    perfect A/V synchronization. Both processors hold media for exactly
+    `delay_seconds` before publishing.
     """
     name = "streamguard_video_processor"
 
@@ -43,8 +46,8 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
         self._forwarder: Optional[VideoForwarder] = None
         self._track = QueuedVideoTrack()
         
-        # Jitter buffer for maintaining sync and the 2-second delay
-        self._frame_buffer = []
+        # Delay buffer for A/V synchronization
+        self._frame_buffer: List[tuple] = []
         self._buffer_task: Optional[asyncio.Task] = None
         self._running = False
 
@@ -66,40 +69,33 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
             logger.info("StreamGuardVideoProcessor attached to video forwarder.")
 
     async def _on_frame_received(self, frame: av.VideoFrame):
-        """Immediately process inference, then place in the delay buffer."""
+        """Timestamp on arrival, then run YOLO in a thread pool and place in delay buffer."""
+        receive_time = time.time()  # Timestamp BEFORE inference for accurate A/V sync
         loop = asyncio.get_running_loop()
-        # Run the blocking YOLO inference in a background thread to prevent starving aiortc
         annotated_frame = await loop.run_in_executor(None, self._annotate, frame)
-        receive_time = time.time()
         
-        # Append to buffer with receipt timestamp
         self._frame_buffer.append((receive_time, annotated_frame))
 
     async def _process_buffer(self):
-        """Continuously check the buffer and dispatch frames once they exactly hit the delay threshold."""
+        """Dispatch frames after exactly `delay_seconds` — matching the audio processor."""
         while self._running:
             now = time.time()
             
-            # Enforce strictly monotonic PTS ordering (thread pools can return slightly out of order)
+            # Sort by PTS to handle thread pool ordering jitter
             self._frame_buffer.sort(key=lambda x: x[1].pts)
             
-            # If the oldest frame in the buffer has been held for exactly `delay_seconds` (or longer)
             while self._frame_buffer and (now - self._frame_buffer[0][0]) >= self.delay_seconds:
                 _, frame_to_publish = self._frame_buffer.pop(0)
                 await self._track.add_frame(frame_to_publish)
             
-            # Sleep a minimal amount to avoid blocking but keep precision tight
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.005)
 
     def _annotate(self, frame: av.VideoFrame) -> av.VideoFrame:
         try:
-            # Convert to numpy array (BGR for OpenCV/Ultralytics)
             img = frame.to_ndarray(format="bgr24")
             
-            # Run inference - targeting < 20ms for YOLO Nano on GPU
             results = self.model(img, conf=self.conf_threshold, verbose=False)
             
-            # Draw blur
             for result in results:
                 boxes = result.boxes
                 if boxes is not None:
@@ -114,7 +110,6 @@ class StreamGuardVideoProcessor(VideoProcessorPublisher):
                             x2, y2 = min(w, x2), min(h, y2)
                             
                             if x2 > x1 and y2 > y1:
-                                # Draw solid box over the detected region
                                 cv2.rectangle(img, (x1, y1), (x2, y2), self.box_color, -1)
             
             new_frame = av.VideoFrame.from_ndarray(img, format="bgr24")
