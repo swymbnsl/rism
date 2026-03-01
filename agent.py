@@ -102,50 +102,63 @@ async def create_agent(**kwargs) -> Agent:
     return agent
 
 async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> None:
+    await agent.create_user()
     call = await agent.create_call(call_type, call_id)
     
-    # --- OBS & YouTube Integration ---
+    # --- OBS WHIP Credentials ---
     try:
-        # 1. Fetch WHIP credentials for OBS
         call_response = await call.get()
         whip_info = call_response.data.call.ingress.whip
         
-        # Create a dedicated user and token for OBS ingest
         obs_user_id = "obs-broadcaster"
-        await agent.edge.create_user(User(id=obs_user_id, name="OBS Streamer"))
+        # IMPORTANT: Use the raw Stream client, NOT agent.edge.create_user().
+        # Edge.create_user() sets self.agent_user_id which would overwrite
+        # the agent's identity and break the SDK's track-skip logic.
+        await agent.edge.client.create_user(name="OBS Streamer", id=obs_user_id)
         obs_token = agent.edge.client.create_token(obs_user_id)
         
-        print("\n" + "="*60)
-        print("🚀 STREAMGUARD OBS INTEGRATION (WHIP)")
-        print("="*60)
-        print(f"URL:          {whip_info.address}")
-        print(f"Bearer Token: {obs_token}")
-        print("-" * 60)
-        print("In OBS: Settings > Stream > Service: WHIP")
-        print("Paste the URL and Bearer Token above. Then 'Start Streaming'.")
-        print("="*60 + "\n")
-
-        # 2. Check for YouTube RTMP Egress
-        youtube_key = os.getenv("YOUTUBE_STREAM_KEY")
-        if youtube_key:
-            from getstream.models import RTMPBroadcastRequest
-            logger.info("📺 Starting RTMP Broadcast to YouTube...")
-            await call.start_rtmp_broadcasts(broadcasts=[
-                RTMPBroadcastRequest(
-                    name="YouTube Live",
-                    stream_url="rtmp://a.rtmp.youtube.com/live2",
-                    stream_key=youtube_key
-                )
-            ])
-            logger.info("✅ YouTube Broadcast Initialized!")
-
+        print("\n" + "="*60, flush=True)
+        print("🚀 STREAMGUARD OBS INTEGRATION (WHIP)", flush=True)
+        print("="*60, flush=True)
+        print(f"URL:          {whip_info.address}", flush=True)
+        print(f"Bearer Token: {obs_token}", flush=True)
+        print("-" * 60, flush=True)
+        print("In OBS: Settings > Stream > Service: WHIP", flush=True)
+        print("Paste the URL and Bearer Token above. Then 'Start Streaming'.", flush=True)
+        print("="*60 + "\n", flush=True)
     except Exception as e:
-        logger.error(f"❌ Failed to initialize OBS/YouTube pipelines: {e}")
-    # ----------------------------------
+        print(f"❌ Failed to fetch OBS WHIP credentials: {e}", flush=True)
 
+    youtube_key = os.getenv("YOUTUBE_STREAM_KEY")
+
+    # OBS connects via WHIP asynchronously. The SDK will detect OBS's
+    # video track whenever it joins and call process_video() automatically.
+    print("⏳ Waiting for OBS to connect via WHIP...", flush=True)
     async with agent.join(call):
         agent.logger.info("StreamGuard Cloud Proxy is Active.")
-        
+
+        # --- YouTube RTMP Egress (agent's processed output only) ---
+        # Start AFTER agent.join() has connected and process_video() has been triggered.
+        if youtube_key:
+            try:
+                from getstream.models import RTMPBroadcastRequest, LayoutSettingsRequest
+                
+                # Use single-participant layout so YouTube shows ONLY the
+                # agent's processed video + audio, not the raw OBS feed.
+                await call.start_rtmp_broadcasts(broadcasts=[
+                    RTMPBroadcastRequest(
+                        name="youtube-live",
+                        stream_url="rtmp://a.rtmp.youtube.com/live2",
+                        stream_key=youtube_key,
+                        layout=LayoutSettingsRequest(
+                            name="single-participant",
+                        ),
+                    )
+                ])
+                logger.info("✅ YouTube Broadcast Initialized (agent-only output)!")
+            except Exception as e:
+                logger.error(f"❌ Failed to start YouTube RTMP broadcast: {e}")
+
         video_proc = next((p for p in agent.processors if p.name == "streamguard_video_processor"), None)
         context_task = asyncio.create_task(check_context_for_violations(agent, video_proc))
         
@@ -154,13 +167,15 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
         except asyncio.CancelledError:
             pass
         finally:
-            if os.getenv("YOUTUBE_STREAM_KEY"):
+            if youtube_key:
                 try:
                     await call.stop_all_rtmp_broadcasts()
-                    logger.info("🛑 Stopped YouTube Broadcasts.")
+                    logger.info("🛑 Stopped YouTube Broadcast.")
                 except:
                     pass
             context_task.cancel()
 
 if __name__ == "__main__":
     Runner(AgentLauncher(create_agent=create_agent, join_call=join_call)).cli()
+
+
