@@ -104,6 +104,45 @@ async def create_agent(**kwargs) -> Agent:
 async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> None:
     call = await agent.create_call(call_type, call_id)
     
+    # --- OBS & YouTube Integration ---
+    try:
+        # 1. Fetch WHIP credentials for OBS
+        call_response = await call.get()
+        whip_info = call_response.data.call.ingress.whip
+        
+        # Create a dedicated user and token for OBS ingest
+        obs_user_id = "obs-broadcaster"
+        await agent.edge.create_user(User(id=obs_user_id, name="OBS Streamer"))
+        obs_token = agent.edge.client.create_token(obs_user_id)
+        
+        print("\n" + "="*60)
+        print("🚀 STREAMGUARD OBS INTEGRATION (WHIP)")
+        print("="*60)
+        print(f"URL:          {whip_info.address}")
+        print(f"Bearer Token: {obs_token}")
+        print("-" * 60)
+        print("In OBS: Settings > Stream > Service: WHIP")
+        print("Paste the URL and Bearer Token above. Then 'Start Streaming'.")
+        print("="*60 + "\n")
+
+        # 2. Check for YouTube RTMP Egress
+        youtube_key = os.getenv("YOUTUBE_STREAM_KEY")
+        if youtube_key:
+            from getstream.models import RTMPBroadcastRequest
+            logger.info("📺 Starting RTMP Broadcast to YouTube...")
+            await call.start_rtmp_broadcasts(broadcasts=[
+                RTMPBroadcastRequest(
+                    name="YouTube Live",
+                    stream_url="rtmp://a.rtmp.youtube.com/live2",
+                    stream_key=youtube_key
+                )
+            ])
+            logger.info("✅ YouTube Broadcast Initialized!")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize OBS/YouTube pipelines: {e}")
+    # ----------------------------------
+
     async with agent.join(call):
         agent.logger.info("StreamGuard Cloud Proxy is Active.")
         
@@ -115,6 +154,12 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
         except asyncio.CancelledError:
             pass
         finally:
+            if os.getenv("YOUTUBE_STREAM_KEY"):
+                try:
+                    await call.stop_all_rtmp_broadcasts()
+                    logger.info("🛑 Stopped YouTube Broadcasts.")
+                except:
+                    pass
             context_task.cancel()
 
 if __name__ == "__main__":
